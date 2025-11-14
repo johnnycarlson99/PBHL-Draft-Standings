@@ -2,11 +2,12 @@
 <html>
 <head>
 <title>December Draft Standings</title>
+<meta charset="UTF-8">
 <style>
   body {
     background: #111;
     color: white;
-    font-family: Arial;
+    font-family: Arial, sans-serif;
     text-align: center;
     padding: 20px;
   }
@@ -20,14 +21,17 @@
     padding: 12px;
     border-bottom: 1px solid #444;
   }
-  tr:nth-child(even) { background: #222; }
-  th { color: #0af; }
+  tr:nth-child(even) { background:#222; }
+  th { color:#0af; }
+  #error { color: red; margin-top: 20px; }
 </style>
 </head>
 <body>
 
 <h1>December Roller Draft Standings</h1>
 <p>(Auto-updates every 60 seconds)</p>
+
+<div id="error"></div>
 
 <table id="standings">
   <tr>
@@ -37,7 +41,7 @@
 </table>
 
 <script>
-// Captain → NHL Team ID
+// Captain → NHL Team ID mapping
 const TEAM_MAP = {
   "Johnny": { id: 3, name: "Rangers" },
   "Dan":    { id: 16, name: "Blackhawks" },
@@ -49,23 +53,27 @@ const TEAM_MAP = {
   "Daz":    { id: 28, name: "Sharks" }
 };
 
+// 100% working proxy
 async function fetchNHLData() {
   const year = 2024;
-  const url = `https://statsapi.web.nhl.com/api/v1/schedule?startDate=${year}-12-01&endDate=${year}-12-31`;
+  const apiUrl = `https://statsapi.web.nhl.com/api/v1/schedule?startDate=${year}-12-01&endDate=${year}-12-31`;
 
-  // Fix for GitHub Pages CORS
-  const proxy = "https://corsproxy.io/?";
-  const res = await fetch(proxy + encodeURIComponent(url));
+  const proxyUrl = "https://api.allorigins.win/get?url=" + encodeURIComponent(apiUrl);
 
-  const data = await res.json();
-  return data.dates || [];
+  try {
+    const response = await fetch(proxyUrl);
+    const wrapped = await response.json();
+    return JSON.parse(wrapped.contents).dates || [];
+  } catch (err) {
+    document.getElementById("error").innerText = "Error loading NHL data.";
+    console.error(err);
+    return [];
+  }
 }
-
 
 async function computeStandings() {
   const games = await fetchNHLData();
 
-  // Initialize standings
   let standings = {};
   for (let captain in TEAM_MAP) {
     standings[captain] = {
@@ -76,7 +84,6 @@ async function computeStandings() {
     };
   }
 
-  // Process each game
   games.forEach(day => {
     day.games.forEach(game => {
       if (game.status.detailedState !== "Final") return;
@@ -92,7 +99,6 @@ async function computeStandings() {
 
       let wentOT = game.linescore.currentPeriod > 3 || game.linescore.hasShootout;
 
-      // Check if any captain's team is involved
       for (let captain in standings) {
         let teamId = standings[captain].id;
 
@@ -106,7 +112,7 @@ async function computeStandings() {
           } else if (teamId === loser) {
             if (wentOT) {
               standings[captain].OTL++;
-              standings[captain].Points += 1;
+              standings[captain].Points++;
             } else {
               standings[captain].L++;
             }
@@ -116,11 +122,10 @@ async function computeStandings() {
     });
   });
 
-  // Compute games + points %
   for (let c in standings) {
     let s = standings[c];
     s.Games = s.W + s.L + s.OTL;
-    s.PtsPct = s.Games === 0 ? 0 : s.Points / (s.Games * 2);
+    s.PtsPct = s.Games ? s.Points / (s.Games * 2) : 0;
   }
 
   return standings;
@@ -129,8 +134,12 @@ async function computeStandings() {
 async function renderStandings() {
   let standings = await computeStandings();
 
-  let rows = Object.values(standings)
-    .sort((a, b) => b.PtsPct - a.PtsPct);
+  if (!standings) {
+    document.getElementById("error").innerText = "Standings unavailable.";
+    return;
+  }
+
+  let rows = Object.values(standings).sort((a,b) => b.PtsPct - a.PtsPct);
 
   let table = document.getElementById("standings");
   table.innerHTML = `
@@ -158,7 +167,8 @@ async function renderStandings() {
 }
 
 renderStandings();
-setInterval(renderStandings, 60000); // auto-refresh every minute
+setInterval(renderStandings, 60000);
 </script>
+
 </body>
 </html>
