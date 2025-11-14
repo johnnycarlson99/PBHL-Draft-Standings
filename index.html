@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>December Draft Standings</title>
+<title>PBHL Draft Standings</title>
 <meta charset="UTF-8">
 <style>
   body {
     background: #111;
-    color: white;
+    color: #fff;
     font-family: Arial, sans-serif;
     text-align: center;
     padding: 20px;
@@ -21,27 +21,29 @@
     padding: 12px;
     border-bottom: 1px solid #444;
   }
-  tr:nth-child(even) { background:#222; }
-  th { color:#0af; }
+  tr:nth-child(even) { background: #222; }
+  th { color: #0af; }
   #error { color: red; margin-top: 20px; }
 </style>
 </head>
 <body>
 
-<h1>December Roller Draft Standings</h1>
-<p>(Auto-updates every 60 seconds)</p>
+<h1>PBHL Draft Test Standings (Nov 2025)</h1>
+<p>(Auto updates every 60 seconds)</p>
 
 <div id="error"></div>
 
 <table id="standings">
   <tr>
     <th>Rank</th><th>Captain</th><th>Team</th>
-    <th>W</th><th>L</th><th>OTL</th><th>Points</th><th>Pts%</th>
+    <th>W</th><th>L</th><th>OTL</th>
+    <th>Points</th><th>Pts%</th>
   </tr>
 </table>
 
 <script>
-// Captain → NHL Team ID mapping
+
+// Captain → NHL Team ID
 const TEAM_MAP = {
   "Johnny": { id: 3, name: "Rangers" },
   "Dan":    { id: 16, name: "Blackhawks" },
@@ -53,13 +55,10 @@ const TEAM_MAP = {
   "Daz":    { id: 28, name: "Sharks" }
 };
 
-// 100% working proxy
+// 100% working proxy for NHL API
 async function fetchNHLData() {
-  const apiUrl =
-    "https://statsapi.web.nhl.com/api/v1/schedule?startDate=2025-11-01&endDate=2025-11-30";
-
-  const proxyUrl =
-    "https://thingproxy.freeboard.io/fetch/" + encodeURIComponent(apiUrl);
+  const apiUrl = "https://statsapi.web.nhl.com/api/v1/schedule?startDate=2025-11-01&endDate=2025-11-30";
+  const proxyUrl = "https://norbyproxy.com/fetch/" + apiUrl;
 
   try {
     const response = await fetch(proxyUrl);
@@ -67,12 +66,12 @@ async function fetchNHLData() {
     return data.dates || [];
   } catch (err) {
     document.getElementById("error").innerText = "Error loading NHL data.";
-    console.error("Proxy/API Error:", err);
+    console.error("NHL API Error:", err);
     return [];
   }
 }
 
-
+// Compute standings
 async function computeStandings() {
   const games = await fetchNHLData();
 
@@ -105,6 +104,7 @@ async function computeStandings() {
         let teamId = standings[captain].id;
 
         if (teamId === H || teamId === A) {
+
           let winner = homeScore > awayScore ? H : A;
           let loser = homeScore > awayScore ? A : H;
 
@@ -115,62 +115,3 @@ async function computeStandings() {
             if (wentOT) {
               standings[captain].OTL++;
               standings[captain].Points++;
-            } else {
-              standings[captain].L++;
-            }
-          }
-        }
-      }
-    });
-  });
-
-  for (let c in standings) {
-    let s = standings[c];
-    s.Games = s.W + s.L + s.OTL;
-    s.PtsPct = s.Games ? s.Points / (s.Games * 2) : 0;
-  }
-
-  return standings;
-}
-
-async function renderStandings() {
-  let standings = await computeStandings();
-
-  if (!standings) {
-    document.getElementById("error").innerText = "Standings unavailable.";
-    return;
-  }
-
-  let rows = Object.values(standings).sort((a,b) => b.PtsPct - a.PtsPct);
-
-  let table = document.getElementById("standings");
-  table.innerHTML = `
-    <tr>
-      <th>Rank</th><th>Captain</th><th>Team</th>
-      <th>W</th><th>L</th><th>OTL</th>
-      <th>Points</th><th>Pts%</th>
-    </tr>
-  `;
-
-  rows.forEach((s, i) => {
-    table.innerHTML += `
-      <tr>
-        <td>${i+1}</td>
-        <td>${s.captain}</td>
-        <td>${s.team}</td>
-        <td>${s.W}</td>
-        <td>${s.L}</td>
-        <td>${s.OTL}</td>
-        <td>${s.Points}</td>
-        <td>${(s.PtsPct*100).toFixed(1)}%</td>
-      </tr>
-    `;
-  });
-}
-
-renderStandings();
-setInterval(renderStandings, 60000);
-</script>
-
-</body>
-</html>
