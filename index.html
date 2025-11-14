@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>December Draft Standings</title>
+<style>
+  body {
+    background: #111;
+    color: white;
+    font-family: Arial;
+    text-align: center;
+    padding: 20px;
+  }
+  table {
+    margin: auto;
+    border-collapse: collapse;
+    width: 90%;
+    font-size: 22px;
+  }
+  th, td {
+    padding: 12px;
+    border-bottom: 1px solid #444;
+  }
+  tr:nth-child(even) { background: #222; }
+  th { color: #0af; }
+</style>
+</head>
+<body>
+
+<h1>December Roller Draft Standings</h1>
+<p>(Auto-updates every 60 seconds)</p>
+
+<table id="standings">
+  <tr>
+    <th>Rank</th><th>Captain</th><th>Team</th>
+    <th>W</th><th>L</th><th>OTL</th><th>Points</th><th>Pts%</th>
+  </tr>
+</table>
+
+<script>
+// Captain → NHL Team ID
+const TEAM_MAP = {
+  "Johnny": { id: 3, name: "Rangers" },
+  "Dan":    { id: 16, name: "Blackhawks" },
+  "Grant":  { id: 17, name: "Red Wings" },
+  "Ethan":  { id: 54, name: "Vegas" },
+  "Mikey":  { id: 19, name: "Blues" },
+  "Chris":  { id: 5,  name: "Penguins" },
+  "Gage":   { id: 6,  name: "Bruins" },
+  "Daz":    { id: 28, name: "Sharks" }
+};
+
+async function fetchNHLData() {
+  const year = 2024; // change to 2025 next year
+  const url = `https://statsapi.web.nhl.com/api/v1/schedule?startDate=${year}-12-01&endDate=${year}-12-31`;
+  const res = await fetch(url);
+  const data = await res.json();
+  return data.dates || [];
+}
+
+async function computeStandings() {
+  const games = await fetchNHLData();
+
+  // Initialize standings
+  let standings = {};
+  for (let captain in TEAM_MAP) {
+    standings[captain] = {
+      captain,
+      team: TEAM_MAP[captain].name,
+      id: TEAM_MAP[captain].id,
+      W: 0, L: 0, OTL: 0, Points: 0, Games: 0
+    };
+  }
+
+  // Process each game
+  games.forEach(day => {
+    day.games.forEach(game => {
+      if (game.status.detailedState !== "Final") return;
+
+      let home = game.teams.home;
+      let away = game.teams.away;
+
+      let H = home.team.id;
+      let A = away.team.id;
+
+      let homeScore = home.score;
+      let awayScore = away.score;
+
+      let wentOT = game.linescore.currentPeriod > 3 || game.linescore.hasShootout;
+
+      // Check if any captain's team is involved
+      for (let captain in standings) {
+        let teamId = standings[captain].id;
+
+        if (teamId === H || teamId === A) {
+          let winner = homeScore > awayScore ? H : A;
+          let loser = homeScore > awayScore ? A : H;
+
+          if (teamId === winner) {
+            standings[captain].W++;
+            standings[captain].Points += 2;
+          } else if (teamId === loser) {
+            if (wentOT) {
+              standings[captain].OTL++;
+              standings[captain].Points += 1;
+            } else {
+              standings[captain].L++;
+            }
+          }
+        }
+      }
+    });
+  });
+
+  // Compute games + points %
+  for (let c in standings) {
+    let s = standings[c];
+    s.Games = s.W + s.L + s.OTL;
+    s.PtsPct = s.Games === 0 ? 0 : s.Points / (s.Games * 2);
+  }
+
+  return standings;
+}
+
+async function renderStandings() {
+  let standings = await computeStandings();
+
+  let rows = Object.values(standings)
+    .sort((a, b) => b.PtsPct - a.PtsPct);
+
+  let table = document.getElementById("standings");
+  table.innerHTML = `
+    <tr>
+      <th>Rank</th><th>Captain</th><th>Team</th>
+      <th>W</th><th>L</th><th>OTL</th>
+      <th>Points</th><th>Pts%</th>
+    </tr>
+  `;
+
+  rows.forEach((s, i) => {
+    table.innerHTML += `
+      <tr>
+        <td>${i+1}</td>
+        <td>${s.captain}</td>
+        <td>${s.team}</td>
+        <td>${s.W}</td>
+        <td>${s.L}</td>
+        <td>${s.OTL}</td>
+        <td>${s.Points}</td>
+        <td>${(s.PtsPct*100).toFixed(1)}%</td>
+      </tr>
+    `;
+  });
+}
+
+renderStandings();
+setInterval(renderStandings, 60000); // auto-refresh every minute
+</script>
+</body>
+</html>
