@@ -55,8 +55,7 @@ const TEAM_MAP = {
 
 // 100% working proxy
 async function fetchNHLData() {
-  const year = 2024;
-  const apiUrl = `https://statsapi.web.nhl.com/api/v1/schedule?startDate=${year}-12-01&endDate=${year}-12-31`;
+  const apiUrl = `https://statsapi.web.nhl.com/api/v1/schedule?startDate=2025-11-01&endDate=2025-11-30`;
 
   const proxyUrl = "https://api.allorigins.win/get?url=" + encodeURIComponent(apiUrl);
 
