@@ -50,12 +50,17 @@ const TEAM_MAP = {
 };
 
 async function fetchNHLData() {
-  const year = 2024; // change to 2025 next year
+  const year = 2024;
   const url = `https://statsapi.web.nhl.com/api/v1/schedule?startDate=${year}-12-01&endDate=${year}-12-31`;
-  const res = await fetch(url);
+
+  // Fix for GitHub Pages CORS
+  const proxy = "https://corsproxy.io/?";
+  const res = await fetch(proxy + encodeURIComponent(url));
+
   const data = await res.json();
   return data.dates || [];
 }
+
 
 async function computeStandings() {
   const games = await fetchNHLData();
