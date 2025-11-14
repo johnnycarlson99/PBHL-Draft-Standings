@@ -55,20 +55,23 @@ const TEAM_MAP = {
 
 // 100% working proxy
 async function fetchNHLData() {
-  const apiUrl = `https://statsapi.web.nhl.com/api/v1/schedule?startDate=2025-11-01&endDate=2025-11-30`;
+  const apiUrl =
+    "https://statsapi.web.nhl.com/api/v1/schedule?startDate=2025-11-01&endDate=2025-11-30";
 
-  const proxyUrl = "https://api.allorigins.win/get?url=" + encodeURIComponent(apiUrl);
+  const proxyUrl =
+    "https://thingproxy.freeboard.io/fetch/" + encodeURIComponent(apiUrl);
 
   try {
     const response = await fetch(proxyUrl);
-    const wrapped = await response.json();
-    return JSON.parse(wrapped.contents).dates || [];
+    const data = await response.json();
+    return data.dates || [];
   } catch (err) {
     document.getElementById("error").innerText = "Error loading NHL data.";
-    console.error(err);
+    console.error("Proxy/API Error:", err);
     return [];
   }
 }
+
 
 async function computeStandings() {
   const games = await fetchNHLData();
