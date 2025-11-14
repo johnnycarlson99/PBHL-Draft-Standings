@@ -57,21 +57,34 @@ const TEAM_MAP = {
 
 // 100% working proxy for NHL API
 async function fetchNHLData() {
-  const apiUrl =
-    "https://statsapi.web.nhl.com/api/v1/schedule?startDate=2025-11-01&endDate=2025-11-30";
+  const start = new Date("2025-11-01");
+  const end   = new Date("2025-11-30");
 
-  const url = "https://corsproxy.io/?" + encodeURIComponent(apiUrl);
+  let allGames = [];
 
-  try {
-    const response = await fetch(url);
-    const data = await response.json();
-    return data.dates || [];
-  } catch (err) {
-    document.getElementById("error").innerText = "Error loading NHL data.";
-    console.error("Proxy/API Error:", err);
-    return [];
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const dateStr = d.toISOString().split("T")[0];
+    const url = `https://api-web.nhle.com/v1/schedule/${dateStr}`;
+
+    try {
+      const response = await fetch(url);
+      const dayData = await response.json();
+
+      if (dayData.gameWeek) {
+        dayData.gameWeek.forEach(week => {
+          week.games.forEach(g => {
+            allGames.push(g);
+          });
+        });
+      }
+    } catch (err) {
+      console.error("Error loading date:", dateStr, err);
+    }
   }
+
+  return allGames;
 }
+
 
 
 // Compute standings
