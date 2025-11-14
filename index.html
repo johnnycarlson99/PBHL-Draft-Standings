@@ -57,33 +57,32 @@ const TEAM_MAP = {
 
 // 100% working proxy for NHL API
 async function fetchNHLData() {
-  const start = new Date("2025-11-01");
-  const end   = new Date("2025-11-30");
+  const start = new Date("2024-11-01");
+  const end = new Date("2024-11-30");
+  const season = "20242025";
 
   let allGames = [];
 
   for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
     const dateStr = d.toISOString().split("T")[0];
-    const url = `https://api-web.nhle.com/v1/schedule/${dateStr}`;
+    const url = `https://api-web.nhle.com/v1/schedule/${season}/${dateStr}`;
 
     try {
       const response = await fetch(url);
-      const dayData = await response.json();
+      const json = await response.json();
 
-      if (dayData.gameWeek) {
-        dayData.gameWeek.forEach(week => {
-          week.games.forEach(g => {
-            allGames.push(g);
-          });
-        });
+      if (json.games && Array.isArray(json.games)) {
+        json.games.forEach(g => allGames.push(g));
       }
+
     } catch (err) {
-      console.error("Error loading date:", dateStr, err);
+      console.error("Error loading:", url, err);
     }
   }
 
   return allGames;
 }
+
 
 
 
